@@ -10,6 +10,7 @@ import {
 } from '../utils/settings'
 import { csvToWords, downloadCsv, wordsToCsv } from '../utils/csv'
 import { normalize } from '../db'
+import type { Word } from '../types'
 
 export default function SettingsPage() {
   const [apiKey, setApiKeyState] = useState(getGeminiApiKey())
@@ -47,19 +48,24 @@ export default function SettingsPage() {
     const text = await file.text()
     const rows = csvToWords(text)
 
+    // 行ごとにDBへ問い合わせず、既存データを1回だけ読み込んでMapで突き合わせ、
+    // 書き込みも1回のbulkPutにまとめることで大量行のインポートを高速化する。
+    const existingByNorm = new Map((await db.words.toArray()).map((w) => [w.normalizedTerm, w]))
+
     let added = 0
     let updated = 0
-    for (const row of rows) {
+    const toPut: Word[] = rows.map((row) => {
       const norm = row.normalizedTerm || normalize(row.term)
-      const existing = await db.words.where('normalizedTerm').equals(norm).first()
+      const existing = existingByNorm.get(norm)
       if (existing) {
-        await db.words.update(existing.id!, { ...row, normalizedTerm: norm })
         updated++
-      } else {
-        await db.words.add({ ...row, normalizedTerm: norm } as any)
-        added++
+        return { ...existing, ...row, normalizedTerm: norm, id: existing.id }
       }
-    }
+      added++
+      return { ...row, normalizedTerm: norm } as Word
+    })
+
+    await db.words.bulkPut(toPut)
     setMessage(`インポート完了: 新規 ${added}件 / 更新 ${updated}件`)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
@@ -86,12 +92,14 @@ export default function SettingsPage() {
 
       <section className="settings-section">
         <h2>Geminiモデル名(任意)</h2>
-        <p className="hint">空欄の場合は既定のモデル(gemini-flash-latest)を使用します。</p>
+        <p className="hint">
+          空欄の場合は既定のモデル(gemini-flash-lite-latest)を使用します。無料枠の上限が高く、応答も高速です。
+        </p>
         <input
           type="text"
           value={model}
           onChange={(e) => setModelState(e.target.value)}
-          placeholder="gemini-flash-latest"
+          placeholder="gemini-flash-lite-latest"
         />
         <button onClick={saveModel}>保存</button>
       </section>

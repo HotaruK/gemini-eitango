@@ -1,6 +1,6 @@
 import type { WordType } from '../types'
 
-export const DEFAULT_MODEL = 'gemini-flash-latest'
+export const DEFAULT_MODEL = 'gemini-flash-lite-latest'
 
 export interface GeminiWordInfo {
   type: WordType
@@ -16,19 +16,18 @@ const RESPONSE_SCHEMA = {
     type: {
       type: 'string',
       enum: ['word', 'idiom', 'slang', 'meme', 'phrase'],
-      description: '見出し語の種別。通常の単語はword、決まり文句はidiom、俗語はslang、ネットミーム由来はmeme、その他の成句はphrase',
+      description: 'Kind. Normal word=word. Fixed saying=idiom. Slang=slang. Meme=meme. Other phrase=phrase.',
     },
-    meaningJa: { type: 'string', description: '日本語での意味(簡潔に)' },
-    definitionEn: { type: 'string', description: '英語での定義(英英辞典的な説明)' },
+    meaningJa: { type: 'string', description: 'Meaning. Japanese. Short.' },
+    definitionEn: { type: 'string', description: 'Definition. English. Dictionary style.' },
     examples: {
       type: 'array',
       items: { type: 'string' },
-      description: '実際の使用例文(1〜3個)',
+      description: 'Example sentence(s), real usage. 1 to 3.',
     },
     note: {
       type: 'string',
-      description:
-        'ニュアンス、使われる文脈、口語度、そしてスラング・ミーム・イディオムの場合は由来や元ネタの説明(日本語)',
+      description: 'Nuance, context, how casual. Slang/meme/idiom: origin story too. Japanese.',
     },
   },
   required: ['type', 'meaningJa', 'definitionEn', 'examples', 'note'],
@@ -47,17 +46,17 @@ export async function fetchWordInfo(
 
   const model = opts?.model?.trim() || DEFAULT_MODEL
   const contextLine = opts?.dictionaryDefinitionEn
-    ? `\n参考: 英英辞典によるとこの語の定義は "${opts.dictionaryDefinitionEn}" です。この情報も踏まえてください。`
+    ? `\nDict say: "${opts.dictionaryDefinitionEn}". Use this too.`
     : ''
   const passageBlock = opts?.contextText
-    ? `\n\nこの語は次の文章の中で使われています。複数の意味を持つ語の場合は、この文脈における意味を優先してください:\n"""\n${opts.contextText}\n"""`
+    ? `\nWord in this text. Many meaning? Pick meaning fit here:\n"""${opts.contextText}"""`
     : ''
 
-  const prompt = `あなたは英語学習アプリの辞書アシスタントです。次の英単語・熟語・成句・スラング・ミームについて調べてください: "${term}"
+  const prompt = `You dictionary bot for English learner. Look up: "${term}"
 
-これは通常の英単語だけでなく、口語表現・ネットスラング・ミーム的な言い回し・イディオムである可能性があります。もし俗語やミームなら、その由来・元ネタ・使われる場面(SNS、会話、特定のコミュニティなど)も含めてください。${contextLine}${passageBlock}
+Maybe normal word. Maybe slang, meme, idiom, phrasal saying. Slang or meme? Give origin, where used (SNS, chat, community).${contextLine}${passageBlock}
 
-指定されたJSONスキーマの形式で日本語を交えて回答してください。`
+Output: JSON per schema. Text language: Japanese.`
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
     model,
