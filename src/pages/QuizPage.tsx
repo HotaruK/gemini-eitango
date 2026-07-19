@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import db from '../db'
-import { buildQuestion, isWordMastered } from '../utils/quiz'
+import { buildActivePool, buildQuestion, isWordMastered } from '../utils/quiz'
 import { getAutoUnflag } from '../utils/settings'
 import QuizAnalysis from '../components/QuizAnalysis'
 import type { QuizQuestion, Word } from '../types'
@@ -16,8 +16,8 @@ export default function QuizPage() {
   const [view, setView] = useState<View>('quiz')
 
   function nextQuestion(current: Word[]) {
-    const flagged = current.filter((w) => w.isFlagged)
-    setQuestion(buildQuestion(flagged, current))
+    const pool = buildActivePool(current)
+    setQuestion(buildQuestion(pool, current))
     setSelected(null)
   }
 
@@ -93,6 +93,21 @@ export default function QuizPage() {
           {toggleBtn}
         </div>
         <p>まだ★フラグの単語がありません。「調べる」タブで意味を調べた語に★を付けてください。</p>
+      </div>
+    )
+  }
+
+  if (buildActivePool(words).length === 0) {
+    return (
+      <div className="page quiz-page">
+        <div className="quiz-page-header">
+          <h1>クイズ</h1>
+          {toggleBtn}
+        </div>
+        <p>
+          ★フラグの単語はすべて習得済みです。新しい単語を「調べる」タブで登録して★を付けるか、
+          「単語帳」タブで気になる語を「未習得に戻す」と復習できます。
+        </p>
       </div>
     )
   }

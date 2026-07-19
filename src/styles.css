@@ -686,6 +686,11 @@ button:disabled {
   color: var(--danger);
 }
 
+.rate-badge.neutral {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
 .flag-add-btn {
   background: transparent;
   color: var(--accent);
@@ -699,4 +704,13 @@ button:disabled {
   font-size: 0.8rem;
   color: var(--text-muted);
   white-space: nowrap;
+}
+
+.back-to-top-btn {
+  display: block;
+  width: 100%;
+  margin-top: 20px;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
 }

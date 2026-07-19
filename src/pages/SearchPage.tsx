@@ -3,6 +3,7 @@ import db from '../db'
 import { lookupWord } from '../api/lookup'
 import { getGeminiApiKey, getGeminiModel } from '../utils/settings'
 import { saveLookupResult } from '../utils/saveWord'
+import BackToTopButton from '../components/BackToTopButton'
 import type { Word, WordType } from '../types'
 
 const TYPE_LABEL: Record<WordType, string> = {
@@ -172,6 +173,8 @@ export default function SearchPage({ onDone }: SearchPageProps) {
           </div>
         ))}
       </div>
+
+      {items.length > 0 && <BackToTopButton />}
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { analyzePassage } from '../api/passage'
 import { lookupWord } from '../api/lookup'
 import { getGeminiApiKey, getGeminiModel } from '../utils/settings'
 import { saveLookupResult } from '../utils/saveWord'
+import BackToTopButton from '../components/BackToTopButton'
 import type { ExtractedTerm, PassageAnalysisResult, WordType } from '../types'
 
 const TYPE_LABEL: Record<WordType, string> = {
@@ -218,6 +219,8 @@ export default function TranslatePage({ onDone }: TranslatePageProps) {
               </p>
             )}
           </section>
+
+          <BackToTopButton />
         </div>
       )}
     </div>

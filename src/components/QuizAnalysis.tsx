@@ -1,5 +1,5 @@
 import db from '../db'
-import { isWordMastered, MASTERY_MIN_RATE } from '../utils/quiz'
+import { ACTIVE_POOL_SIZE, buildActivePool, isWordMastered, MASTERY_MIN_RATE } from '../utils/quiz'
 import type { Word } from '../types'
 
 const MIN_ATTEMPTS = 3
@@ -37,6 +37,10 @@ export default function QuizAnalysis({ words }: { words: Word[] }) {
   const mastered = words.filter(isWordMastered)
   const unseen = words.filter((w) => w.quizCount === 0 && w.quizCountReverse === 0)
   const inProgress = words.length - mastered.length - unseen.length
+
+  const activePool = buildActivePool(words)
+  const learningQueueTotal = words.filter((w) => w.isFlagged && !isWordMastered(w)).length
+  const queuedCount = learningQueueTotal - activePool.length
 
   const weakest = words
     .filter((w) => {
@@ -78,6 +82,42 @@ export default function QuizAnalysis({ words }: { words: Word[] }) {
           <span><i className="dot in-progress" />学習中 {inProgress}</span>
           <span><i className="dot unseen" />未出題 {unseen.length}</span>
         </div>
+      </section>
+
+      <section className="analysis-section">
+        <h2>
+          学習中の単語 ({activePool.length}/{ACTIVE_POOL_SIZE})
+        </h2>
+        {activePool.length === 0 ? (
+          <p className="analysis-hint">現在ループ中の単語はありません。</p>
+        ) : (
+          <>
+            <p className="analysis-hint">
+              クイズはこの{activePool.length}語だけをループします。習得済みになると自動的に外れ、次の語が繰り上がります。
+              {queuedCount > 0 && ` 他に${queuedCount}語が出番待ちです。`}
+            </p>
+            <ul className="analysis-list">
+              {activePool.map((w) => {
+                const stats = combinedStats(w)
+                return (
+                  <li key={w.id} className="analysis-item">
+                    <div className="analysis-item-main">
+                      <strong>{w.term}</strong>
+                      <span className="meaning">{w.meaningJa}</span>
+                    </div>
+                    <div className="analysis-item-meta">
+                      <span className="rate-badge neutral">
+                        {stats.rate === undefined
+                          ? '未出題'
+                          : `${Math.round(stats.rate * 100)}% (${stats.correctCount}/${stats.quizCount})`}
+                      </span>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          </>
+        )}
       </section>
 
       <section className="analysis-section">

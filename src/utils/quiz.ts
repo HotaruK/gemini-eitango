@@ -5,6 +5,7 @@ const EPSILON = 0.1
 const MASTERED_MULTIPLIER = 0.15
 export const MASTERY_MIN_QUIZ_COUNT = 5
 export const MASTERY_MIN_RATE = 0.8
+export const ACTIVE_POOL_SIZE = 30
 
 export function computeRate(quizCount: number, correctCount: number): number | undefined {
   return quizCount > 0 ? correctCount / quizCount : undefined
@@ -22,6 +23,18 @@ export function isWordMastered(
     isMastered(word.quizCount, word.correctCount) &&
     isMastered(word.quizCountReverse, word.correctCountReverse)
   )
+}
+
+/**
+ * ★フラグの語のうち未習得のものを登録順に最大ACTIVE_POOL_SIZE件だけ「学習中プール」として返す。
+ * 一度に大量の語をループさせると定着しにくいため出題対象をここで絞り、
+ * 習得済みになった語は自然にプールから外れて次の語が繰り上がる。
+ */
+export function buildActivePool(words: Word[]): Word[] {
+  return words
+    .filter((w) => w.isFlagged && !isWordMastered(w))
+    .sort((a, b) => a.createdAt - b.createdAt)
+    .slice(0, ACTIVE_POOL_SIZE)
 }
 
 export function directionWeight(quizCount: number, correctCount: number): number {
