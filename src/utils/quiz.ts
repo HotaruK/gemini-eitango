@@ -15,6 +15,15 @@ export function isMastered(quizCount: number, correctCount: number): boolean {
   return quizCount >= MASTERY_MIN_QUIZ_COUNT && (rate ?? 0) >= MASTERY_MIN_RATE
 }
 
+export function isWordMastered(
+  word: Pick<Word, 'quizCount' | 'correctCount' | 'quizCountReverse' | 'correctCountReverse'>,
+): boolean {
+  return (
+    isMastered(word.quizCount, word.correctCount) &&
+    isMastered(word.quizCountReverse, word.correctCountReverse)
+  )
+}
+
 export function directionWeight(quizCount: number, correctCount: number): number {
   if (quizCount === 0) return UNSEEN_WEIGHT
   const rate = computeRate(quizCount, correctCount) ?? 0

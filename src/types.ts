@@ -18,6 +18,7 @@ export interface Word {
   correctCount: number
   quizCountReverse: number
   correctCountReverse: number
+  masteredAt?: number
   createdAt: number
   updatedAt: number
 }
