@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import db from '../db'
 import { buildActivePool, buildQuestion, isWordMastered } from '../utils/quiz'
@@ -14,11 +14,18 @@ export default function QuizPage() {
   const [selected, setSelected] = useState<number | null>(null)
   const [session, setSession] = useState({ asked: 0, correct: 0 })
   const [view, setView] = useState<View>('quiz')
+  const [justMastered, setJustMastered] = useState<string | null>(null)
+  const lastTargetIdRef = useRef<number | null>(null)
 
   function nextQuestion(current: Word[]) {
     const pool = buildActivePool(current)
-    setQuestion(buildQuestion(pool, current))
+    const candidates =
+      pool.length > 1 ? pool.filter((w) => w.id !== lastTargetIdRef.current) : pool
+    const q = buildQuestion(candidates, current)
+    lastTargetIdRef.current = q?.target.id ?? null
+    setQuestion(q)
     setSelected(null)
+    setJustMastered(null)
   }
 
   useEffect(() => {
@@ -43,13 +50,15 @@ export default function QuizPage() {
         }
 
     const merged = { ...w, ...updates } as Word
-    if (isWordMastered(merged) && !isWordMastered(w)) {
+    const justMasteredNow = isWordMastered(merged) && !isWordMastered(w)
+    if (justMasteredNow) {
       updates.masteredAt = Date.now()
       if (getAutoUnflag()) updates.isFlagged = false
     }
 
     await db.words.update(w.id!, updates)
     setSession((s) => ({ asked: s.asked + 1, correct: s.correct + (correct ? 1 : 0) }))
+    setJustMastered(justMasteredNow ? w.term : null)
   }
 
   if (words === undefined) {
@@ -164,6 +173,7 @@ export default function QuizPage() {
         {selected !== null && (
           <div className="quiz-feedback">
             <p>{selected === question.correctIndex ? '正解!' : '不正解'}</p>
+            {justMastered && <p className="mastered-toast">🎉 {justMastered} を習得しました!</p>}
             <button className="next-btn" onClick={() => nextQuestion(words)}>
               次の問題
             </button>

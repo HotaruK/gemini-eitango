@@ -41,6 +41,11 @@ export default function SearchPage({ onDone }: SearchPageProps) {
   const [error, setError] = useState<string | null>(null)
   const [items, setItems] = useState<SearchItem[]>([])
 
+  function handleQueryChange(value: string) {
+    const lines = value.split('\n')
+    setQuery(lines.length > MAX_TERMS ? lines.slice(0, MAX_TERMS).join('\n') : value)
+  }
+
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault()
     const terms = parseTerms(query)
@@ -94,7 +99,7 @@ export default function SearchPage({ onDone }: SearchPageProps) {
         <div className="field-clear-wrap textarea-wrap">
           <textarea
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => handleQueryChange(e.target.value)}
             placeholder={`単語・熟語・スラング・ミームを入力(1行またはカンマ区切りで最大${MAX_TERMS}個まで同時に調べられます)`}
             rows={3}
             autoCapitalize="off"

@@ -101,17 +101,17 @@ export default function QuizAnalysis({ words }: { words: Word[] }) {
                 const stats = combinedStats(w)
                 return (
                   <li key={w.id} className="analysis-item">
-                    <div className="analysis-item-main">
+                    <div className="analysis-item-row">
                       <strong>{w.term}</strong>
-                      <span className="meaning">{w.meaningJa}</span>
+                      <div className="analysis-item-meta">
+                        <span className="rate-badge neutral">
+                          {stats.rate === undefined
+                            ? '未出題'
+                            : `${Math.round(stats.rate * 100)}% (${stats.correctCount}/${stats.quizCount})`}
+                        </span>
+                      </div>
                     </div>
-                    <div className="analysis-item-meta">
-                      <span className="rate-badge neutral">
-                        {stats.rate === undefined
-                          ? '未出題'
-                          : `${Math.round(stats.rate * 100)}% (${stats.correctCount}/${stats.quizCount})`}
-                      </span>
-                    </div>
+                    <p className="meaning">{w.meaningJa}</p>
                   </li>
                 )
               })}
@@ -132,20 +132,20 @@ export default function QuizAnalysis({ words }: { words: Word[] }) {
               const stats = combinedStats(w)
               return (
                 <li key={w.id} className="analysis-item">
-                  <div className="analysis-item-main">
+                  <div className="analysis-item-row">
                     <strong>{w.term}</strong>
-                    <span className="meaning">{w.meaningJa}</span>
+                    <div className="analysis-item-meta">
+                      <span className="rate-badge weak">
+                        {Math.round((stats.rate ?? 0) * 100)}% ({stats.correctCount}/{stats.quizCount})
+                      </span>
+                      {!w.isFlagged && (
+                        <button className="flag-add-btn" onClick={() => addFlag(w.id!)}>
+                          ★ 出題対象に追加
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="analysis-item-meta">
-                    <span className="rate-badge weak">
-                      {Math.round((stats.rate ?? 0) * 100)}% ({stats.correctCount}/{stats.quizCount})
-                    </span>
-                    {!w.isFlagged && (
-                      <button className="flag-add-btn" onClick={() => addFlag(w.id!)}>
-                        ★ 出題対象に追加
-                      </button>
-                    )}
-                  </div>
+                  <p className="meaning">{w.meaningJa}</p>
                 </li>
               )
             })}
@@ -161,13 +161,13 @@ export default function QuizAnalysis({ words }: { words: Word[] }) {
           <ul className="analysis-list">
             {recentlyMastered.map((w) => (
               <li key={w.id} className="analysis-item">
-                <div className="analysis-item-main">
+                <div className="analysis-item-row">
                   <strong>{w.term}</strong>
-                  <span className="meaning">{w.meaningJa}</span>
+                  <div className="analysis-item-meta">
+                    <span className="mastered-date">{formatRelativeDate(w.masteredAt!)}</span>
+                  </div>
                 </div>
-                <div className="analysis-item-meta">
-                  <span className="mastered-date">{formatRelativeDate(w.masteredAt!)}</span>
-                </div>
+                <p className="meaning">{w.meaningJa}</p>
               </li>
             ))}
           </ul>

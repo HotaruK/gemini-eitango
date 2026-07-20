@@ -2,7 +2,6 @@ import type { QuizDirection, QuizQuestion, Word } from '../types'
 
 const UNSEEN_WEIGHT = 3.0
 const EPSILON = 0.1
-const MASTERED_MULTIPLIER = 0.15
 export const MASTERY_MIN_QUIZ_COUNT = 5
 export const MASTERY_MIN_RATE = 0.8
 export const ACTIVE_POOL_SIZE = 30
@@ -39,10 +38,9 @@ export function buildActivePool(words: Word[]): Word[] {
 
 export function directionWeight(quizCount: number, correctCount: number): number {
   if (quizCount === 0) return UNSEEN_WEIGHT
+  if (isMastered(quizCount, correctCount)) return 0
   const rate = computeRate(quizCount, correctCount) ?? 0
-  let weight = 1 - rate + EPSILON
-  if (isMastered(quizCount, correctCount)) weight *= MASTERED_MULTIPLIER
-  return weight
+  return 1 - rate + EPSILON
 }
 
 export function wordWeight(word: Word): number {
