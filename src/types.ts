@@ -45,3 +45,11 @@ export interface QuizQuestion {
   choices: string[]
   correctIndex: number
 }
+
+export interface Attempt {
+  id?: number
+  wordId: number
+  correct: boolean
+  direction: QuizDirection
+  answeredAt: number
+}

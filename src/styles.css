@@ -10,6 +10,7 @@
   --accent-text: #ffffff;
   --success: #3ecf8e;
   --danger: #ff5d6c;
+  --info: #f5a623;
   font-family: -apple-system, 'Segoe UI', 'Hiragino Sans', 'Yu Gothic', sans-serif;
 }
 
@@ -549,24 +550,72 @@ button:disabled {
   margin-top: 14px;
 }
 
-.quiz-page-header {
+.stat-card-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
+  margin-bottom: 20px;
 }
 
-.quiz-page-header h1 {
-  margin: 0;
-}
-
-.analysis-toggle-btn {
-  background: var(--surface-2);
-  color: var(--text);
+.stat-card {
+  flex: 1;
+  background: var(--surface);
   border: 1px solid var(--border);
-  padding: 6px 12px;
-  font-size: 0.85rem;
-  width: auto;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.stat-card .stat-label {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-bottom: 4px;
+}
+
+.stat-card .stat-value {
+  font-size: 1.6rem;
+  font-weight: 600;
+}
+
+.weekly-chart {
+  margin-bottom: 20px;
+}
+
+.weekly-chart svg {
+  width: 100%;
+  height: auto;
+}
+
+.weekly-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.weekly-chart-legend .dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+
+.streak-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+}
+
+.streak-badge strong {
+  color: var(--info);
 }
 
 .analysis-empty {

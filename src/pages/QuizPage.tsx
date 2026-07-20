@@ -3,17 +3,13 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import db from '../db'
 import { buildActivePool, buildQuestion, isWordMastered } from '../utils/quiz'
 import { getAutoUnflag } from '../utils/settings'
-import QuizAnalysis from '../components/QuizAnalysis'
 import type { QuizQuestion, Word } from '../types'
-
-type View = 'quiz' | 'analysis'
 
 export default function QuizPage() {
   const words = useLiveQuery(() => db.words.toArray(), [])
   const [question, setQuestion] = useState<QuizQuestion | null>(null)
   const [selected, setSelected] = useState<number | null>(null)
   const [session, setSession] = useState({ asked: 0, correct: 0 })
-  const [view, setView] = useState<View>('quiz')
   const [justMastered, setJustMastered] = useState<string | null>(null)
   const lastTargetIdRef = useRef<number | null>(null)
 
@@ -57,6 +53,7 @@ export default function QuizPage() {
     }
 
     await db.words.update(w.id!, updates)
+    await db.attempts.add({ wordId: w.id!, correct, direction: question.direction, answeredAt: Date.now() })
     setSession((s) => ({ asked: s.asked + 1, correct: s.correct + (correct ? 1 : 0) }))
     setJustMastered(justMasteredNow ? w.term : null)
   }
@@ -70,37 +67,12 @@ export default function QuizPage() {
     )
   }
 
-  const toggleBtn = words.length > 0 && (
-    <button
-      type="button"
-      className="analysis-toggle-btn"
-      onClick={() => setView((v) => (v === 'quiz' ? 'analysis' : 'quiz'))}
-    >
-      {view === 'quiz' ? '📊 分析' : '← クイズに戻る'}
-    </button>
-  )
-
-  if (view === 'analysis') {
-    return (
-      <div className="page quiz-page">
-        <div className="quiz-page-header">
-          <h1>クイズ分析</h1>
-          {toggleBtn}
-        </div>
-        <QuizAnalysis words={words} />
-      </div>
-    )
-  }
-
   const flaggedCount = words.filter((w) => w.isFlagged).length
 
   if (flaggedCount === 0) {
     return (
       <div className="page quiz-page">
-        <div className="quiz-page-header">
-          <h1>クイズ</h1>
-          {toggleBtn}
-        </div>
+        <h1>クイズ</h1>
         <p>まだ★フラグの単語がありません。「調べる」タブで意味を調べた語に★を付けてください。</p>
       </div>
     )
@@ -109,10 +81,7 @@ export default function QuizPage() {
   if (buildActivePool(words).length === 0) {
     return (
       <div className="page quiz-page">
-        <div className="quiz-page-header">
-          <h1>クイズ</h1>
-          {toggleBtn}
-        </div>
+        <h1>クイズ</h1>
         <p>
           ★フラグの単語はすべて習得済みです。新しい単語を「調べる」タブで登録して★を付けるか、
           「単語帳」タブで気になる語を「未習得に戻す」と復習できます。
@@ -124,10 +93,7 @@ export default function QuizPage() {
   if (!question || question.choices.length < 2) {
     return (
       <div className="page quiz-page">
-        <div className="quiz-page-header">
-          <h1>クイズ</h1>
-          {toggleBtn}
-        </div>
+        <h1>クイズ</h1>
         <p>クイズには最低4語の登録が必要です。もう少し単語を登録してください。</p>
       </div>
     )
@@ -138,10 +104,7 @@ export default function QuizPage() {
 
   return (
     <div className="page quiz-page">
-      <div className="quiz-page-header">
-        <h1>クイズ</h1>
-        {toggleBtn}
-      </div>
+      <h1>クイズ</h1>
       <p className="session-stats">
         今回のセッション: {session.correct} / {session.asked} 問正解
       </p>
