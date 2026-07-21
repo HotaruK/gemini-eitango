@@ -53,9 +53,14 @@ export default function QuizPage() {
     }
 
     await db.words.update(w.id!, updates)
-    await db.attempts.add({ wordId: w.id!, correct, direction: question.direction, answeredAt: Date.now() })
     setSession((s) => ({ asked: s.asked + 1, correct: s.correct + (correct ? 1 : 0) }))
     setJustMastered(justMasteredNow ? w.term : null)
+
+    try {
+      await db.attempts.add({ wordId: w.id!, correct, direction: question.direction, answeredAt: Date.now() })
+    } catch (err) {
+      console.error('Failed to log quiz attempt', err)
+    }
   }
 
   if (words === undefined) {
