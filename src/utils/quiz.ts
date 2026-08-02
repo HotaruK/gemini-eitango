@@ -93,6 +93,26 @@ function pickDirection(word: Word): QuizDirection {
   return idx === 0 ? 'termToMeaning' : 'meaningToTerm'
 }
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * targetのexamplesの中から見出し語を含む例文を探し、見出し語を空欄に置き換えて返す。
+ * 見つからなければnull(意味プロンプトにフォールバックする)。
+ */
+export function buildBlankedSentence(word: Word): string | null {
+  const term = word.term.trim()
+  if (!term) return null
+  const isSingleWord = /^[A-Za-z']+$/.test(term)
+  const pattern = isSingleWord ? `\\b${escapeRegExp(term)}\\b` : escapeRegExp(term)
+  const re = new RegExp(pattern, 'i')
+  for (const ex of word.examples) {
+    if (re.test(ex)) return ex.replace(re, '_____')
+  }
+  return null
+}
+
 function shuffle<T>(arr: T[]): T[] {
   const copy = [...arr]
   for (let i = copy.length - 1; i > 0; i--) {
@@ -133,5 +153,8 @@ export function buildQuestion(flagged: Word[], all: Word[]): QuizQuestion | null
   const choices = shuffle([correctText, ...distractors])
   const correctIndex = choices.indexOf(correctText)
 
-  return { direction, target, choices, correctIndex }
+  const blankedSentence =
+    direction === 'meaningToTerm' && Math.random() < 0.5 ? buildBlankedSentence(target) ?? undefined : undefined
+
+  return { direction, target, choices, correctIndex, blankedSentence }
 }

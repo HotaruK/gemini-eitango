@@ -136,8 +136,17 @@ export default function QuizPage() {
     )
   }
 
-  const directionLabel = question.direction === 'termToMeaning' ? 'この語の意味は?' : 'この意味を表す語は?'
-  const prompt = question.direction === 'termToMeaning' ? question.target.term : question.target.meaningJa
+  const isFillBlank = question.direction === 'meaningToTerm' && question.blankedSentence !== undefined
+  const directionLabel = isFillBlank
+    ? '空欄に入る語は?'
+    : question.direction === 'termToMeaning'
+      ? 'この語の意味は?'
+      : 'この意味を表す語は?'
+  const prompt = isFillBlank
+    ? question.blankedSentence!
+    : question.direction === 'termToMeaning'
+      ? question.target.term
+      : question.target.meaningJa
 
   return (
     <div className="page quiz-page">
@@ -150,7 +159,7 @@ export default function QuizPage() {
 
       <div className="quiz-card">
         <p className="quiz-direction">{directionLabel}</p>
-        <p className="quiz-prompt">{prompt}</p>
+        <p className={`quiz-prompt${isFillBlank ? ' sentence' : ''}`}>{prompt}</p>
 
         <div className="choices">
           {question.choices.map((choice, idx) => {

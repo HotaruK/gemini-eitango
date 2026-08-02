@@ -46,6 +46,8 @@ export interface QuizQuestion {
   target: Word
   choices: string[]
   correctIndex: number
+  /** meaningToTerm方向で、意味の代わりに例文の穴埋めをプロンプトにする場合の文言 */
+  blankedSentence?: string
 }
 
 export interface Attempt {
