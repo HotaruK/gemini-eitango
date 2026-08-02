@@ -18,9 +18,15 @@ export interface DictionaryNotFound {
 export async function lookupDictionary(
   term: string,
 ): Promise<DictionaryResult | DictionaryNotFound> {
-  const res = await fetch(
-    `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(term)}`,
-  )
+  let res: Response
+  try {
+    res = await fetch(
+      `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(term)}`,
+    )
+  } catch {
+    // 辞書APIへの通信自体が失敗(ブロック・オフライン等)した場合もGeminiのみのフォールバックに委ねる
+    return { found: false }
+  }
   if (!res.ok) {
     return { found: false }
   }

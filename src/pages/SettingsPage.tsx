@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { version as appVersion } from '../../package.json'
 import db from '../db'
 import {
   getAutoUnflag,
@@ -122,6 +123,8 @@ export default function SettingsPage() {
           </label>
         </div>
       </section>
+
+      <p className="app-version">v{appVersion}</p>
     </div>
   )
 }
