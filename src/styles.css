@@ -426,6 +426,11 @@ button:disabled {
   text-align: center;
 }
 
+.answer-meaning {
+  margin-top: 8px;
+  color: var(--text-muted);
+}
+
 .mastered-toast {
   margin-top: 8px;
   background: rgba(62, 207, 142, 0.15);

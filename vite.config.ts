@@ -16,6 +16,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // main.tsx側でvirtual:pwa-registerを使い、定期的な更新チェックと
+      // 新SW適用後の自動リロードを行うため、自動注入の素朴なregisterは無効化する。
+      injectRegister: false,
       includeAssets: ['icons/icon.svg'],
       manifest: {
         name: '英単語メモ',

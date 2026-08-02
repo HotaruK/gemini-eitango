@@ -11,13 +11,12 @@ export default function QuizPage() {
   const [selected, setSelected] = useState<number | null>(null)
   const [session, setSession] = useState({ asked: 0, correct: 0 })
   const [justMastered, setJustMastered] = useState<string | null>(null)
-  const [studyAheadMode, setStudyAheadMode] = useState(false)
   const lastTargetIdRef = useRef<number | null>(null)
 
-  function nextQuestion(current: Word[], studyAhead: boolean) {
+  function nextQuestion(current: Word[]) {
     const active = buildActivePool(current)
     const due = buildDuePool(active)
-    const pool = studyAhead ? active : due
+    const pool = due.length > 0 ? due : active
     const candidates = pool.length > 1 ? pool.filter((w) => w.id !== lastTargetIdRef.current) : pool
     const q = buildQuestion(candidates, current)
     lastTargetIdRef.current = q?.target.id ?? null
@@ -28,7 +27,7 @@ export default function QuizPage() {
 
   useEffect(() => {
     if (words && question === null) {
-      nextQuestion(words, studyAheadMode)
+      nextQuestion(words)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [words])
@@ -108,24 +107,7 @@ export default function QuizPage() {
   }
 
   const duePool = buildDuePool(activePool)
-
-  if (duePool.length === 0 && !studyAheadMode) {
-    return (
-      <div className="page quiz-page">
-        <h1>クイズ</h1>
-        <p>今日復習予定の単語はありません。明日以降にまた出題されます。</p>
-        <button
-          className="next-btn"
-          onClick={() => {
-            setStudyAheadMode(true)
-            nextQuestion(words, true)
-          }}
-        >
-          先取りで学習する({activePool.length}語)
-        </button>
-      </div>
-    )
-  }
+  const studyAheadMode = duePool.length === 0
 
   if (!question || question.choices.length < 2) {
     return (
@@ -184,8 +166,13 @@ export default function QuizPage() {
         {selected !== null && (
           <div className="quiz-feedback">
             <p>{selected === question.correctIndex ? '正解!' : '不正解'}</p>
+            {isFillBlank && (
+              <p className="answer-meaning">
+                正解: <strong>{question.target.term}</strong> — {question.target.meaningJa}
+              </p>
+            )}
             {justMastered && <p className="mastered-toast">🎉 {justMastered} を習得しました!</p>}
-            <button className="next-btn" onClick={() => nextQuestion(words, studyAheadMode)}>
+            <button className="next-btn" onClick={() => nextQuestion(words)}>
               次の問題
             </button>
           </div>
