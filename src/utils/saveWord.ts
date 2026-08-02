@@ -19,6 +19,8 @@ export async function saveLookupResult(looked: LookupResult, opts?: { flagIfNew?
       correctCount: existing.correctCount,
       quizCountReverse: existing.quizCountReverse,
       correctCountReverse: existing.correctCountReverse,
+      intervalIndex: existing.intervalIndex,
+      nextReviewAt: existing.nextReviewAt,
       createdAt: existing.createdAt,
       updatedAt: now,
     }
@@ -33,6 +35,8 @@ export async function saveLookupResult(looked: LookupResult, opts?: { flagIfNew?
     correctCount: 0,
     quizCountReverse: 0,
     correctCountReverse: 0,
+    intervalIndex: 0,
+    nextReviewAt: now,
     createdAt: now,
     updatedAt: now,
   }

@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie'
 import type { Attempt, Word } from './types'
+import { MASTERY_INTERVAL_INDEX } from './utils/quiz'
 
 export function normalize(term: string): string {
   return term.trim().toLowerCase().replace(/\s+/g, ' ')
@@ -18,6 +19,32 @@ db.version(2).stores({
   words: '++id, &normalizedTerm, type, isFlagged, createdAt',
   attempts: '++id, wordId, answeredAt',
 })
+
+// 間隔反復(SRS)用に intervalIndex / nextReviewAt を追加。
+// 既存語は「旧定義(quizCount>=5 & rate>=0.8 が両方向とも成立)で習得済みだったか」で
+// 初期ステップを決め、全語 nextReviewAt=now(即due)として新スケジュールを開始する。
+db.version(3)
+  .stores({
+    words: '++id, &normalizedTerm, type, isFlagged, createdAt, nextReviewAt',
+    attempts: '++id, wordId, answeredAt',
+  })
+  .upgrade(async (tx) => {
+    const legacyMastered = (quizCount: number, correctCount: number): boolean => {
+      const rate = quizCount > 0 ? correctCount / quizCount : 0
+      return quizCount >= 5 && rate >= 0.8
+    }
+    const now = Date.now()
+    await tx
+      .table('words')
+      .toCollection()
+      .modify((w: Word) => {
+        const wasMastered =
+          legacyMastered(w.quizCount, w.correctCount) &&
+          legacyMastered(w.quizCountReverse, w.correctCountReverse)
+        w.intervalIndex = wasMastered ? MASTERY_INTERVAL_INDEX : 0
+        w.nextReviewAt = now
+      })
+  })
 
 // このタブがスキーマの新バージョンを開こうとしたとき、古いバージョンを保持している
 // 側は自分から接続を閉じて再読み込みする（Dexie推奨パターン）。生きているタブはこれで解放される。

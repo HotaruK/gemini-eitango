@@ -17,6 +17,8 @@ const COLUMNS: (keyof Word)[] = [
   'correctCount',
   'quizCountReverse',
   'correctCountReverse',
+  'intervalIndex',
+  'nextReviewAt',
   'createdAt',
   'updatedAt',
 ]
@@ -122,6 +124,8 @@ export function csvToWords(text: string): Omit<Word, 'id'>[] {
       correctCount: Number(record.correctCount) || 0,
       quizCountReverse: Number(record.quizCountReverse) || 0,
       correctCountReverse: Number(record.correctCountReverse) || 0,
+      intervalIndex: Number(record.intervalIndex) || 0,
+      nextReviewAt: Number(record.nextReviewAt) || Date.now(),
       createdAt: Number(record.createdAt) || Date.now(),
       updatedAt: Number(record.updatedAt) || Date.now(),
     }

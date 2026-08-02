@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import db from '../db'
-import { computeRate, isWordMastered } from '../utils/quiz'
+import { computeRate, isWordDue, isWordMastered } from '../utils/quiz'
 import type { WordType } from '../types'
 
 const TYPE_LABEL: Record<WordType, string> = {
@@ -19,6 +19,12 @@ function formatRate(quizCount: number, correctCount: number): string {
   const rate = computeRate(quizCount, correctCount)
   if (rate === undefined) return '未出題'
   return `${Math.round(rate * 100)}% (${correctCount}/${quizCount})`
+}
+
+function formatNextReview(nextReviewAt: number): string {
+  if (isWordDue({ nextReviewAt })) return '復習: 今すぐ'
+  const days = Math.ceil((nextReviewAt - Date.now()) / (24 * 60 * 60 * 1000))
+  return `復習: ${days}日後`
 }
 
 export default function WordListPage() {
@@ -65,6 +71,8 @@ export default function WordListPage() {
         correctCount: 0,
         quizCountReverse: 0,
         correctCountReverse: 0,
+        intervalIndex: 0,
+        nextReviewAt: Date.now(),
         masteredAt: undefined,
       })
     }
@@ -135,6 +143,7 @@ export default function WordListPage() {
             <div className="stats">
               <span>語→意味: {formatRate(w.quizCount, w.correctCount)}</span>
               <span>意味→語: {formatRate(w.quizCountReverse, w.correctCountReverse)}</span>
+              {w.isFlagged && !isWordMastered(w) && <span>{formatNextReview(w.nextReviewAt)}</span>}
             </div>
             <div className="item-actions">
               {isWordMastered(w) && (

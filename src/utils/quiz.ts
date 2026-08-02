@@ -2,26 +2,46 @@ import type { QuizDirection, QuizQuestion, Word } from '../types'
 
 const UNSEEN_WEIGHT = 3.0
 const EPSILON = 0.1
-export const MASTERY_MIN_QUIZ_COUNT = 5
 export const MASTERY_MIN_RATE = 0.8
 export const ACTIVE_POOL_SIZE = 30
+
+// 間隔反復(Leitner式)のステップ。正誤の2値しか得られないため易しさ係数は持たず、
+// 正解でステップを1つ進め、不正解でステップ0(即再出題)に戻す。
+export const INTERVAL_STEPS_DAYS = [0, 1, 3, 7, 14, 30, 60]
+export const MASTERY_INTERVAL_INDEX = INTERVAL_STEPS_DAYS.length - 1
+const DAY_MS = 24 * 60 * 60 * 1000
 
 export function computeRate(quizCount: number, correctCount: number): number | undefined {
   return quizCount > 0 ? correctCount / quizCount : undefined
 }
 
-export function isMastered(quizCount: number, correctCount: number): boolean {
+// direction単位の重み付けにのみ使う「この方向はよく正解できている」判定。
+// 単語全体の習得済み判定(isWordMastered)とは別物。
+function isDirectionSaturated(quizCount: number, correctCount: number): boolean {
   const rate = computeRate(quizCount, correctCount)
-  return quizCount >= MASTERY_MIN_QUIZ_COUNT && (rate ?? 0) >= MASTERY_MIN_RATE
+  return quizCount >= 5 && (rate ?? 0) >= MASTERY_MIN_RATE
 }
 
-export function isWordMastered(
-  word: Pick<Word, 'quizCount' | 'correctCount' | 'quizCountReverse' | 'correctCountReverse'>,
-): boolean {
-  return (
-    isMastered(word.quizCount, word.correctCount) &&
-    isMastered(word.quizCountReverse, word.correctCountReverse)
-  )
+export function isWordMastered(word: Pick<Word, 'intervalIndex'>): boolean {
+  return word.intervalIndex >= MASTERY_INTERVAL_INDEX
+}
+
+export function isWordDue(word: Pick<Word, 'nextReviewAt'>, now: number = Date.now()): boolean {
+  return word.nextReviewAt <= now
+}
+
+/**
+ * 正誤に応じて次の間隔ステップと次回出題予定時刻を計算する。
+ * 正解: ステップを1つ進める。不正解: ステップ0(即再出題)に戻す。
+ */
+export function computeNextReview(
+  intervalIndex: number,
+  correct: boolean,
+  now: number = Date.now(),
+): { intervalIndex: number; nextReviewAt: number } {
+  const nextIndex = correct ? Math.min(intervalIndex + 1, MASTERY_INTERVAL_INDEX) : 0
+  const nextReviewAt = now + INTERVAL_STEPS_DAYS[nextIndex] * DAY_MS
+  return { intervalIndex: nextIndex, nextReviewAt }
 }
 
 /**
@@ -36,9 +56,14 @@ export function buildActivePool(words: Word[]): Word[] {
     .slice(0, ACTIVE_POOL_SIZE)
 }
 
+/** 学習中プールのうち、復習予定時刻(nextReviewAt)が到来している語だけを返す。 */
+export function buildDuePool(activePool: Word[], now: number = Date.now()): Word[] {
+  return activePool.filter((w) => isWordDue(w, now))
+}
+
 export function directionWeight(quizCount: number, correctCount: number): number {
   if (quizCount === 0) return UNSEEN_WEIGHT
-  if (isMastered(quizCount, correctCount)) return 0
+  if (isDirectionSaturated(quizCount, correctCount)) return 0
   const rate = computeRate(quizCount, correctCount) ?? 0
   return 1 - rate + EPSILON
 }
