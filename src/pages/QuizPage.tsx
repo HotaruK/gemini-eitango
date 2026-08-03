@@ -16,9 +16,13 @@ export default function QuizPage() {
   function nextQuestion(current: Word[]) {
     const active = buildActivePool(current)
     const due = buildDuePool(active)
-    const pool = due.length > 0 ? due : active
-    const candidates = pool.length > 1 ? pool.filter((w) => w.id !== lastTargetIdRef.current) : pool
-    const q = buildQuestion(candidates, current)
+    const basePool = due.length > 0 ? due : active
+    // dueプールが直前の出題語だけに収束すると候補が尽きるため、その場合は
+    // 学習中プール全体(直前語を除く)にフォールバックし、連続出題を防ぐ。
+    const withoutLast = basePool.filter((w) => w.id !== lastTargetIdRef.current)
+    const candidates =
+      withoutLast.length > 0 ? withoutLast : active.filter((w) => w.id !== lastTargetIdRef.current)
+    const q = buildQuestion(candidates.length > 0 ? candidates : basePool, current)
     lastTargetIdRef.current = q?.target.id ?? null
     setQuestion(q)
     setSelected(null)

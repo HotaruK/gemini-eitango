@@ -15,13 +15,6 @@ export function computeRate(quizCount: number, correctCount: number): number | u
   return quizCount > 0 ? correctCount / quizCount : undefined
 }
 
-// direction単位の重み付けにのみ使う「この方向はよく正解できている」判定。
-// 単語全体の習得済み判定(isWordMastered)とは別物。
-function isDirectionSaturated(quizCount: number, correctCount: number): boolean {
-  const rate = computeRate(quizCount, correctCount)
-  return quizCount >= 5 && (rate ?? 0) >= MASTERY_MIN_RATE
-}
-
 export function isWordMastered(word: Pick<Word, 'intervalIndex'>): boolean {
   return word.intervalIndex >= MASTERY_INTERVAL_INDEX
 }
@@ -63,7 +56,6 @@ export function buildDuePool(activePool: Word[], now: number = Date.now()): Word
 
 export function directionWeight(quizCount: number, correctCount: number): number {
   if (quizCount === 0) return UNSEEN_WEIGHT
-  if (isDirectionSaturated(quizCount, correctCount)) return 0
   const rate = computeRate(quizCount, correctCount) ?? 0
   return 1 - rate + EPSILON
 }
