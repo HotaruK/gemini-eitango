@@ -8,6 +8,7 @@ import {
   setAutoUnflag,
   setGeminiApiKey,
   setGeminiModel,
+  setLastBackupAt,
 } from '../utils/settings'
 import { csvToWords, downloadCsv, wordsToCsv } from '../utils/csv'
 import { normalize } from '../db'
@@ -41,6 +42,7 @@ export default function SettingsPage() {
     const csv = wordsToCsv(words)
     const date = new Date().toISOString().slice(0, 10)
     downloadCsv(csv, `eitango-memo-${date}.csv`)
+    setLastBackupAt(Date.now())
   }
 
   async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {

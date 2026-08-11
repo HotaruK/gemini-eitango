@@ -92,6 +92,18 @@ db.open()
     setBlocked(true)
   })
 
+// IndexedDBは既定では「一時ストレージ」扱いで、端末のストレージが逼迫すると
+// ブラウザが警告なしにオリジンごと削除することがある(localStorageは対象外のため生き残る)。
+// 永続化ストレージを要求することで、この自動削除の対象から外れる可能性を高める(付与は保証されない)。
+if (navigator.storage?.persist) {
+  navigator.storage
+    .persist()
+    .then((granted) => {
+      if (!granted) console.warn('eitango-memo: persistent storage was not granted')
+    })
+    .catch((err) => console.error('eitango-memo: failed to request persistent storage', err))
+}
+
 const ATTEMPT_RETENTION_MS = 90 * 24 * 60 * 60 * 1000
 
 export async function pruneOldAttempts() {

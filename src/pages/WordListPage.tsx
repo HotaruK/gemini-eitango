@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import db from '../db'
 import { computeRate, isWordDue, isWordMastered } from '../utils/quiz'
 import RelatedTermsModal from '../components/RelatedTermsModal'
+import BackupReminderBanner from '../components/BackupReminderBanner'
 import type { Word, WordType } from '../types'
 
 const TYPE_LABEL: Record<WordType, string> = {
@@ -83,6 +84,8 @@ export default function WordListPage() {
   return (
     <div className="page list-page">
       <h1>単語帳</h1>
+
+      <BackupReminderBanner />
 
       <div className="filters">
         <div className="field-clear-wrap">

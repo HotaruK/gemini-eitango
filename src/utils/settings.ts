@@ -1,6 +1,7 @@
 const GEMINI_KEY_STORAGE = 'eitango.geminiApiKey'
 const GEMINI_MODEL_STORAGE = 'eitango.geminiModel'
 const AUTO_UNFLAG_STORAGE = 'eitango.autoUnflag'
+const LAST_BACKUP_AT_STORAGE = 'eitango.lastBackupAt'
 
 export function getGeminiApiKey(): string {
   return localStorage.getItem(GEMINI_KEY_STORAGE) ?? ''
@@ -24,4 +25,21 @@ export function getAutoUnflag(): boolean {
 
 export function setAutoUnflag(value: boolean): void {
   localStorage.setItem(AUTO_UNFLAG_STORAGE, String(value))
+}
+
+export function getLastBackupAt(): number | null {
+  const raw = localStorage.getItem(LAST_BACKUP_AT_STORAGE)
+  return raw ? Number(raw) : null
+}
+
+const lastBackupListeners = new Set<(timestamp: number) => void>()
+
+export function onLastBackupAtChange(cb: (timestamp: number) => void): () => void {
+  lastBackupListeners.add(cb)
+  return () => lastBackupListeners.delete(cb)
+}
+
+export function setLastBackupAt(timestamp: number): void {
+  localStorage.setItem(LAST_BACKUP_AT_STORAGE, String(timestamp))
+  lastBackupListeners.forEach((cb) => cb(timestamp))
 }

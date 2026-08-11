@@ -823,6 +823,32 @@ button:disabled {
   white-space: nowrap;
 }
 
+.backup-banner {
+  background: rgba(245, 166, 35, 0.12);
+  border: 1px solid var(--info);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.backup-banner p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.backup-banner button {
+  align-self: flex-start;
+  background: var(--info);
+  color: #2a1a00;
+  font-size: 0.85rem;
+  padding: 6px 12px;
+}
+
 .icon-btn {
   background: var(--surface-2);
   color: var(--text);
