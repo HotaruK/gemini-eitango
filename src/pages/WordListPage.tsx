@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import db from '../db'
 import { computeRate, isWordDue, isWordMastered } from '../utils/quiz'
-import type { WordType } from '../types'
+import RelatedTermsModal from '../components/RelatedTermsModal'
+import type { Word, WordType } from '../types'
 
 const TYPE_LABEL: Record<WordType, string> = {
   word: '単語',
@@ -32,6 +33,7 @@ export default function WordListPage() {
   const [typeFilter, setTypeFilter] = useState<WordType | 'all'>('all')
   const [flagFilter, setFlagFilter] = useState<FlagFilter>('all')
   const [masteryFilter, setMasteryFilter] = useState<MasteryFilter>('all')
+  const [relatedTermsWord, setRelatedTermsWord] = useState<Word | null>(null)
 
   const words = useLiveQuery(
     () => db.words.toArray().then((arr) => arr.sort((a, b) => b.updatedAt - a.updatedAt)),
@@ -138,6 +140,15 @@ export default function WordListPage() {
               >
                 {w.isFlagged ? '★' : '☆'}
               </button>
+              <button
+                type="button"
+                className="icon-btn"
+                onClick={() => setRelatedTermsWord(w)}
+                aria-label="もっと知る"
+                title="もっと知る"
+              >
+                🔍
+              </button>
             </div>
             <p className="meaning">{w.meaningJa}</p>
             <div className="stats">
@@ -158,6 +169,10 @@ export default function WordListPage() {
           </li>
         ))}
       </ul>
+
+      {relatedTermsWord && (
+        <RelatedTermsModal word={relatedTermsWord} onClose={() => setRelatedTermsWord(null)} />
+      )}
     </div>
   )
 }

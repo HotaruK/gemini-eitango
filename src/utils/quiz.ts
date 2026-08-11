@@ -3,7 +3,7 @@ import type { QuizDirection, QuizQuestion, Word } from '../types'
 const UNSEEN_WEIGHT = 3.0
 const EPSILON = 0.1
 export const MASTERY_MIN_RATE = 0.8
-export const ACTIVE_POOL_SIZE = 30
+export const ACTIVE_POOL_SIZE = 50
 
 // 間隔反復(Leitner式)のステップ。正誤の2値しか得られないため易しさ係数は持たず、
 // 正解でステップを1つ進め、不正解でステップ0(即再出題)に戻す。

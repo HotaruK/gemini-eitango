@@ -137,11 +137,12 @@ export default function QuizPage() {
   return (
     <div className="page quiz-page">
       <h1>クイズ</h1>
-      <p className="session-stats">
-        今回のセッション: {session.correct} / {session.asked} 問正解
-        {' ・ '}
-        今日の復習: {duePool.length}語{studyAheadMode && '(先取り学習中)'}
-      </p>
+      <div className="session-stats">
+        <p>今回のセッション: {session.correct} / {session.asked} 問正解</p>
+        <p>
+          今日の復習: {duePool.length}語{studyAheadMode && '(先取り学習中)'}
+        </p>
+      </div>
 
       <div className="quiz-card">
         <p className="quiz-direction">{directionLabel}</p>
