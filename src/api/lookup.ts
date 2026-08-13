@@ -1,5 +1,5 @@
 import { lookupDictionary } from './dictionary'
-import { fetchWordInfo } from './gemini'
+import { fetchWordInfoBatch } from './gemini'
 import { normalize } from '../db'
 import type { Source, Word } from '../types'
 
@@ -19,47 +19,58 @@ export interface LookupResult {
 /**
  * 標準的な単語は無料辞書APIでまず引き、Geminiは英日訳・ニュアンス・由来の補完に使う。
  * 辞書API未収録(熟語・スラング・ミーム等)の場合はGeminiのみで全項目を生成する。
+ * Geminiへの問い合わせは単語数によらず常に1回のリクエストにまとめる
+ * (単語ごとに並列リクエストするとレート制限に当たりやすいため)。
  */
-export async function lookupWord(
-  term: string,
+export async function lookupWords(
+  terms: string[],
   apiKey: string,
   model?: string,
   contextText?: string,
-): Promise<LookupResult> {
-  const trimmed = term.trim()
-  if (!trimmed) throw new Error('検索語が空です')
+): Promise<LookupResult[]> {
+  const trimmedTerms = terms.map((t) => t.trim()).filter(Boolean)
+  if (trimmedTerms.length === 0) return []
 
-  const dictResult = await lookupDictionary(trimmed)
+  const dictResults = await Promise.all(trimmedTerms.map((t) => lookupDictionary(t)))
 
-  const geminiInfo = await fetchWordInfo(trimmed, apiKey, {
-    dictionaryDefinitionEn: dictResult.found ? dictResult.definitionEn : undefined,
-    model,
-    contextText,
-  })
+  const geminiInfos = await fetchWordInfoBatch(
+    trimmedTerms.map((term, i) => ({
+      term,
+      dictionaryDefinitionEn: dictResults[i].found ? dictResults[i].definitionEn : undefined,
+    })),
+    apiKey,
+    { model, contextText },
+  )
 
-  if (dictResult.found) {
+  return trimmedTerms.map((term, i) => {
+    const dictResult = dictResults[i]
+    const geminiInfo = geminiInfos[i]
+    const normalizedTerm = normalize(term)
+
+    if (dictResult.found) {
+      return {
+        term,
+        normalizedTerm,
+        type: geminiInfo.type,
+        meaningJa: geminiInfo.meaningJa,
+        definitionEn: dictResult.definitionEn,
+        phonetic: dictResult.phonetic,
+        audioUrl: dictResult.audioUrl,
+        examples: dictResult.examples.length > 0 ? dictResult.examples : geminiInfo.examples,
+        note: geminiInfo.note,
+        source: 'mixed',
+      }
+    }
+
     return {
-      term: trimmed,
-      normalizedTerm: normalize(trimmed),
+      term,
+      normalizedTerm,
       type: geminiInfo.type,
       meaningJa: geminiInfo.meaningJa,
-      definitionEn: dictResult.definitionEn,
-      phonetic: dictResult.phonetic,
-      audioUrl: dictResult.audioUrl,
-      examples: dictResult.examples.length > 0 ? dictResult.examples : geminiInfo.examples,
+      definitionEn: geminiInfo.definitionEn,
+      examples: geminiInfo.examples,
       note: geminiInfo.note,
-      source: 'mixed',
+      source: 'gemini',
     }
-  }
-
-  return {
-    term: trimmed,
-    normalizedTerm: normalize(trimmed),
-    type: geminiInfo.type,
-    meaningJa: geminiInfo.meaningJa,
-    definitionEn: geminiInfo.definitionEn,
-    examples: geminiInfo.examples,
-    note: geminiInfo.note,
-    source: 'gemini',
-  }
+  })
 }

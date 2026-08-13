@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import db from '../db'
-import { lookupWord } from '../api/lookup'
+import { lookupWords } from '../api/lookup'
 import { getGeminiApiKey, getGeminiModel } from '../utils/settings'
 import { saveLookupResult } from '../utils/saveWord'
 import BackToTopButton from '../components/BackToTopButton'
@@ -61,22 +61,15 @@ export default function SearchPage({ onDone }: SearchPageProps) {
     setError(null)
     setItems(terms.map((term) => ({ term, status: 'loading' })))
 
-    // 1〜10件を並列でリクエストする(1件ずつ待つより体感速度が大きく改善するため)
-    await Promise.allSettled(
-      terms.map(async (term, idx) => {
-        try {
-          const looked = await lookupWord(term, apiKey, getGeminiModel())
-          const saved = await saveLookupResult(looked)
-          setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, status: 'done', result: saved } : it)))
-        } catch (err) {
-          setItems((prev) =>
-            prev.map((it, i) =>
-              i === idx ? { ...it, status: 'error', error: err instanceof Error ? err.message : String(err) } : it,
-            ),
-          )
-        }
-      }),
-    )
+    // 単語数によらずGeminiへの問い合わせは1回にまとめる(単語ごとの並列リクエストはレート制限に当たりやすいため)
+    try {
+      const looked = await lookupWords(terms, apiKey, getGeminiModel())
+      const saved = await Promise.all(looked.map((l) => saveLookupResult(l)))
+      setItems(terms.map((term, i) => ({ term, status: 'done', result: saved[i] })))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      setItems(terms.map((term) => ({ term, status: 'error', error: message })))
+    }
 
     setLoading(false)
     onDone?.()

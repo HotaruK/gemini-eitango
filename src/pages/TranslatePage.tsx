@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { analyzePassage } from '../api/passage'
-import { lookupWord } from '../api/lookup'
+import { lookupWords } from '../api/lookup'
 import { getGeminiApiKey, getGeminiModel } from '../utils/settings'
 import { saveLookupResult } from '../utils/saveWord'
 import BackToTopButton from '../components/BackToTopButton'
@@ -95,15 +95,26 @@ export default function TranslatePage({ onDone }: TranslatePageProps) {
     const added: string[] = []
     const failed: string[] = []
 
-    for (const t of targets) {
-      try {
-        const looked = await lookupWord(t.term, apiKey, getGeminiModel(), text)
-        await saveLookupResult(looked, { flagIfNew: true })
-        added.push(t.term)
-      } catch {
-        failed.push(t.term)
+    // 単語数によらずGeminiへの問い合わせは1回にまとめる(単語ごとの逐次リクエストは無駄に回数がかさむため)
+    try {
+      const looked = await lookupWords(
+        targets.map((t) => t.term),
+        apiKey,
+        getGeminiModel(),
+        text,
+      )
+      for (const l of looked) {
+        try {
+          await saveLookupResult(l, { flagIfNew: true })
+          added.push(l.term)
+        } catch {
+          failed.push(l.term)
+        }
+        setRegisterProgress((p) => ({ ...p, done: p.done + 1 }))
       }
-      setRegisterProgress((p) => ({ ...p, done: p.done + 1 }))
+    } catch {
+      failed.push(...targets.map((t) => t.term))
+      setRegisterProgress({ done: targets.length, total: targets.length })
     }
 
     setRegisterSummary({ added, failed })

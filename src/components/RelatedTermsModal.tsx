@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { fetchRelatedTerms, GeminiError, type RelatedTermsResult } from '../api/gemini'
+import { lookupWords } from '../api/lookup'
 import { getGeminiApiKey, getGeminiModel } from '../utils/settings'
+import { saveLookupResult } from '../utils/saveWord'
 import type { Word } from '../types'
 
 interface RelatedTermsModalProps {
@@ -8,10 +10,13 @@ interface RelatedTermsModalProps {
   onClose: () => void
 }
 
+type RegisterStatus = 'idle' | 'loading' | 'done' | 'error'
+
 export default function RelatedTermsModal({ word, onClose }: RelatedTermsModalProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<RelatedTermsResult | null>(null)
+  const [registerStatus, setRegisterStatus] = useState<Record<string, RegisterStatus>>({})
 
   useEffect(() => {
     let cancelled = false
@@ -40,6 +45,53 @@ export default function RelatedTermsModal({ word, onClose }: RelatedTermsModalPr
     }
   }, [word.term, word.meaningJa])
 
+  async function registerTerm(term: string) {
+    const apiKey = getGeminiApiKey()
+    if (!apiKey) {
+      setRegisterStatus((prev) => ({ ...prev, [term]: 'error' }))
+      return
+    }
+
+    setRegisterStatus((prev) => ({ ...prev, [term]: 'loading' }))
+    try {
+      // 単語検索時と同じ経路(辞書API + Gemini)で情報を取得し、知らない単語として登録する
+      const [looked] = await lookupWords([term], apiKey, getGeminiModel())
+      await saveLookupResult(looked, { flagIfNew: true })
+      setRegisterStatus((prev) => ({ ...prev, [term]: 'done' }))
+    } catch {
+      setRegisterStatus((prev) => ({ ...prev, [term]: 'error' }))
+    }
+  }
+
+  function renderTermList(items: RelatedTermsResult['synonyms']) {
+    return (
+      <ul className="related-term-list">
+        {items.map((s, i) => {
+          const status = registerStatus[s.term] ?? 'idle'
+          return (
+            <li key={i} className="related-term-item">
+              <div className="related-term-text">
+                <strong>{s.term}</strong>
+                {s.meaningJa && ` — ${s.meaningJa}`}
+              </div>
+              <button
+                type="button"
+                className={`register-term-btn ${status}`}
+                disabled={status === 'loading' || status === 'done'}
+                onClick={() => registerTerm(s.term)}
+              >
+                {status === 'loading' && '登録中…'}
+                {status === 'done' && '✓ 登録済み'}
+                {status === 'error' && '再試行'}
+                {status === 'idle' && '＋ 単語帳に登録'}
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+    )
+  }
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -59,34 +111,12 @@ export default function RelatedTermsModal({ word, onClose }: RelatedTermsModalPr
             <>
               <section>
                 <h3>①似た意味の語</h3>
-                {result.synonyms.length === 0 ? (
-                  <p>見つかりませんでした。</p>
-                ) : (
-                  <ul>
-                    {result.synonyms.map((s, i) => (
-                      <li key={i}>
-                        <strong>{s.term}</strong>
-                        {s.meaningJa && ` — ${s.meaningJa}`}
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                {result.synonyms.length === 0 ? <p>見つかりませんでした。</p> : renderTermList(result.synonyms)}
               </section>
 
               <section>
                 <h3>②この語を使ったイディオム</h3>
-                {result.idioms.length === 0 ? (
-                  <p>見つかりませんでした。</p>
-                ) : (
-                  <ul>
-                    {result.idioms.map((s, i) => (
-                      <li key={i}>
-                        <strong>{s.term}</strong>
-                        {s.meaningJa && ` — ${s.meaningJa}`}
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                {result.idioms.length === 0 ? <p>見つかりませんでした。</p> : renderTermList(result.idioms)}
               </section>
             </>
           )}

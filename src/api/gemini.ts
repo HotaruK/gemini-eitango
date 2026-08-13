@@ -10,29 +10,6 @@ export interface GeminiWordInfo {
   note: string
 }
 
-const RESPONSE_SCHEMA = {
-  type: 'object',
-  properties: {
-    type: {
-      type: 'string',
-      enum: ['word', 'idiom', 'slang', 'meme', 'phrase'],
-      description: 'Kind. Normal word=word. Fixed saying=idiom. Slang=slang. Meme=meme. Other phrase=phrase.',
-    },
-    meaningJa: { type: 'string', description: 'Meaning. Japanese. Short.' },
-    definitionEn: { type: 'string', description: 'Definition. English. Dictionary style.' },
-    examples: {
-      type: 'array',
-      items: { type: 'string' },
-      description: 'Example sentence(s), real usage. 1 to 3.',
-    },
-    note: {
-      type: 'string',
-      description: 'Nuance, context, how casual. Slang/meme/idiom: origin story too. Japanese.',
-    },
-  },
-  required: ['type', 'meaningJa', 'definitionEn', 'examples', 'note'],
-}
-
 export class GeminiError extends Error {}
 
 export interface RelatedTerm {
@@ -71,28 +48,79 @@ const RELATED_RESPONSE_SCHEMA = {
   required: ['synonyms', 'idioms'],
 }
 
-export async function fetchWordInfo(
-  term: string,
+export interface BatchTermInput {
+  term: string
+  dictionaryDefinitionEn?: string
+}
+
+const BATCH_ITEM_SCHEMA = {
+  type: 'object',
+  properties: {
+    term: { type: 'string', description: 'Echo back the input term text exactly, unchanged.' },
+    type: {
+      type: 'string',
+      enum: ['word', 'idiom', 'slang', 'meme', 'phrase'],
+      description: 'Kind. Normal word=word. Fixed saying=idiom. Slang=slang. Meme=meme. Other phrase=phrase.',
+    },
+    meaningJa: { type: 'string', description: 'Meaning. Japanese. Short.' },
+    definitionEn: { type: 'string', description: 'Definition. English. Dictionary style.' },
+    examples: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Example sentence(s), real usage. 1 to 3.',
+    },
+    note: {
+      type: 'string',
+      description: 'Nuance, context, how casual. Slang/meme/idiom: origin story too. Japanese.',
+    },
+  },
+  required: ['term', 'type', 'meaningJa', 'definitionEn', 'examples', 'note'],
+}
+
+const BATCH_RESPONSE_SCHEMA = {
+  type: 'object',
+  properties: {
+    results: {
+      type: 'array',
+      items: BATCH_ITEM_SCHEMA,
+      description: 'One entry per input term. Same order and same count as input.',
+    },
+  },
+  required: ['results'],
+}
+
+/**
+ * 複数語を1リクエストにまとめて問い合わせる。単語数分だけ並列にAPIを叩くとGeminiの
+ * レート制限(429)に当たりやすいため、検索語数によらず常に1回のリクエストで済ませる。
+ */
+export async function fetchWordInfoBatch(
+  terms: BatchTermInput[],
   apiKey: string,
-  opts?: { dictionaryDefinitionEn?: string; model?: string; contextText?: string },
-): Promise<GeminiWordInfo> {
+  opts?: { model?: string; contextText?: string },
+): Promise<GeminiWordInfo[]> {
   if (!apiKey) {
     throw new GeminiError('Gemini APIキーが設定されていません。設定画面で入力してください。')
   }
+  if (terms.length === 0) return []
 
   const model = opts?.model?.trim() || DEFAULT_MODEL
-  const contextLine = opts?.dictionaryDefinitionEn
-    ? `\nDict say: "${opts.dictionaryDefinitionEn}". Use this too.`
-    : ''
   const passageBlock = opts?.contextText
-    ? `\nWord in this text. Many meaning? Pick meaning fit here:\n"""${opts.contextText}"""`
+    ? `\nWords appear in this text. Many meaning? Pick meaning fit here:\n"""${opts.contextText}"""`
     : ''
 
-  const prompt = `You dictionary bot for English learner. Look up: "${term}"
+  const termLines = terms
+    .map((t, i) => {
+      const dict = t.dictionaryDefinitionEn ? ` | Dict says: "${t.dictionaryDefinitionEn}"` : ''
+      return `${i + 1}. "${t.term}"${dict}`
+    })
+    .join('\n')
 
-Maybe normal word. Maybe slang, meme, idiom, phrasal saying. Slang or meme? Give origin, where used (SNS, chat, community).${contextLine}${passageBlock}
+  const prompt = `You dictionary bot for English learner. Look up each term below. Maybe normal word. Maybe slang, meme, idiom, phrasal saying. Slang or meme? Give origin, where used (SNS, chat, community).${passageBlock}
 
-Output: JSON per schema. Text language: Japanese.`
+Terms (${terms.length} total):
+${termLines}
+
+Output: JSON per schema. Exactly one result per term, same order, same count. Echo "term" field back exactly as given. Text language: Japanese.`
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
     model,
@@ -105,8 +133,9 @@ Output: JSON per schema. Text language: Japanese.`
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
         responseMimeType: 'application/json',
-        responseSchema: RESPONSE_SCHEMA,
+        responseSchema: BATCH_RESPONSE_SCHEMA,
         temperature: 0.4,
+        maxOutputTokens: 8192,
       },
     }),
   })
@@ -130,18 +159,26 @@ Output: JSON per schema. Text language: Japanese.`
     throw new GeminiError('Geminiから有効な応答が得られませんでした。')
   }
 
+  let results: any[]
   try {
     const parsed = JSON.parse(text)
-    return {
-      type: parsed.type ?? 'word',
-      meaningJa: parsed.meaningJa ?? '',
-      definitionEn: parsed.definitionEn ?? '',
-      examples: Array.isArray(parsed.examples) ? parsed.examples.slice(0, 3) : [],
-      note: parsed.note ?? '',
-    }
+    results = Array.isArray(parsed.results) ? parsed.results : []
   } catch {
     throw new GeminiError('Geminiの応答の解析に失敗しました。')
   }
+
+  return terms.map((t, i) => {
+    const match =
+      results.find((r) => typeof r?.term === 'string' && r.term.trim().toLowerCase() === t.term.trim().toLowerCase()) ??
+      results[i]
+    return {
+      type: match?.type ?? 'word',
+      meaningJa: match?.meaningJa ?? '',
+      definitionEn: match?.definitionEn ?? '',
+      examples: Array.isArray(match?.examples) ? match.examples.slice(0, 3) : [],
+      note: match?.note ?? '',
+    }
+  })
 }
 
 export async function fetchRelatedTerms(
