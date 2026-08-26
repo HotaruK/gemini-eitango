@@ -1,3 +1,7 @@
+import { fetchWithTimeout } from '../utils/fetchWithTimeout'
+
+const DICTIONARY_TIMEOUT_MS = 8000
+
 export interface DictionaryResult {
   found: true
   phonetic?: string
@@ -20,11 +24,14 @@ export async function lookupDictionary(
 ): Promise<DictionaryResult | DictionaryNotFound> {
   let res: Response
   try {
-    res = await fetch(
+    res = await fetchWithTimeout(
       `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(term)}`,
+      {},
+      DICTIONARY_TIMEOUT_MS,
+      '辞書APIがタイムアウトしました',
     )
   } catch {
-    // 辞書APIへの通信自体が失敗(ブロック・オフライン等)した場合もGeminiのみのフォールバックに委ねる
+    // 辞書APIへの通信自体が失敗(ブロック・オフライン・タイムアウト等)した場合もGeminiのみのフォールバックに委ねる
     return { found: false }
   }
   if (!res.ok) {

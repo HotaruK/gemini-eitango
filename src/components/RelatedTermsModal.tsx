@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchRelatedTerms, GeminiError, type RelatedTermsResult } from '../api/gemini'
+import { fetchRelatedTerms, type RelatedTermsResult } from '../api/gemini'
 import { lookupWords } from '../api/lookup'
 import { getGeminiApiKey, getGeminiModel } from '../utils/settings'
 import { saveLookupResult } from '../utils/saveWord'
@@ -17,6 +17,7 @@ export default function RelatedTermsModal({ word, onClose }: RelatedTermsModalPr
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<RelatedTermsResult | null>(null)
   const [registerStatus, setRegisterStatus] = useState<Record<string, RegisterStatus>>({})
+  const [registerError, setRegisterError] = useState<Record<string, string>>({})
 
   useEffect(() => {
     let cancelled = false
@@ -34,7 +35,7 @@ export default function RelatedTermsModal({ word, onClose }: RelatedTermsModalPr
         if (!cancelled) setResult(res)
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof GeminiError ? err.message : String(err))
+        if (!cancelled) setError(err instanceof Error ? err.message : String(err))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -49,17 +50,24 @@ export default function RelatedTermsModal({ word, onClose }: RelatedTermsModalPr
     const apiKey = getGeminiApiKey()
     if (!apiKey) {
       setRegisterStatus((prev) => ({ ...prev, [term]: 'error' }))
+      setRegisterError((prev) => ({ ...prev, [term]: 'Gemini APIキーが未設定です。設定タブで入力してください。' }))
       return
     }
 
     setRegisterStatus((prev) => ({ ...prev, [term]: 'loading' }))
+    setRegisterError((prev) => {
+      const next = { ...prev }
+      delete next[term]
+      return next
+    })
     try {
       // 単語検索時と同じ経路(辞書API + Gemini)で情報を取得し、知らない単語として登録する
       const [looked] = await lookupWords([term], apiKey, getGeminiModel())
       await saveLookupResult(looked, { flagIfNew: true })
       setRegisterStatus((prev) => ({ ...prev, [term]: 'done' }))
-    } catch {
+    } catch (err) {
       setRegisterStatus((prev) => ({ ...prev, [term]: 'error' }))
+      setRegisterError((prev) => ({ ...prev, [term]: err instanceof Error ? err.message : String(err) }))
     }
   }
 
@@ -70,21 +78,26 @@ export default function RelatedTermsModal({ word, onClose }: RelatedTermsModalPr
           const status = registerStatus[s.term] ?? 'idle'
           return (
             <li key={i} className="related-term-item">
-              <div className="related-term-text">
-                <strong>{s.term}</strong>
-                {s.meaningJa && ` — ${s.meaningJa}`}
+              <div className="related-term-row">
+                <div className="related-term-text">
+                  <strong>{s.term}</strong>
+                  {s.meaningJa && ` — ${s.meaningJa}`}
+                </div>
+                <button
+                  type="button"
+                  className={`register-term-btn ${status}`}
+                  disabled={status === 'loading' || status === 'done'}
+                  onClick={() => registerTerm(s.term)}
+                >
+                  {status === 'loading' && '登録中…'}
+                  {status === 'done' && '✓ 登録済み'}
+                  {status === 'error' && '再試行'}
+                  {status === 'idle' && '＋ 単語帳に登録'}
+                </button>
               </div>
-              <button
-                type="button"
-                className={`register-term-btn ${status}`}
-                disabled={status === 'loading' || status === 'done'}
-                onClick={() => registerTerm(s.term)}
-              >
-                {status === 'loading' && '登録中…'}
-                {status === 'done' && '✓ 登録済み'}
-                {status === 'error' && '再試行'}
-                {status === 'idle' && '＋ 単語帳に登録'}
-              </button>
+              {status === 'error' && registerError[s.term] && (
+                <p className="error-text small">{registerError[s.term]}</p>
+              )}
             </li>
           )
         })}

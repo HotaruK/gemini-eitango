@@ -92,6 +92,7 @@ export default function TranslatePage({ onDone }: TranslatePageProps) {
 
     setRegisterStatus('running')
     setRegisterProgress({ done: 0, total: targets.length })
+    setError(null)
     const added: string[] = []
     const failed: string[] = []
 
@@ -112,9 +113,10 @@ export default function TranslatePage({ onDone }: TranslatePageProps) {
         }
         setRegisterProgress((p) => ({ ...p, done: p.done + 1 }))
       }
-    } catch {
+    } catch (err) {
       failed.push(...targets.map((t) => t.term))
       setRegisterProgress({ done: targets.length, total: targets.length })
+      setError(err instanceof Error ? err.message : String(err))
     }
 
     setRegisterSummary({ added, failed })

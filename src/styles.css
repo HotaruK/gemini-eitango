@@ -896,7 +896,7 @@ button:disabled {
   gap: 8px;
 }
 
-.related-term-item {
+.related-term-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -905,6 +905,11 @@ button:disabled {
 
 .related-term-text {
   flex: 1;
+}
+
+.error-text.small {
+  font-size: 0.75rem;
+  margin: 4px 0 0;
 }
 
 .register-term-btn {

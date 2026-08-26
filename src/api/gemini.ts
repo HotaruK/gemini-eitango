@@ -1,6 +1,10 @@
+import { fetchWithTimeout } from '../utils/fetchWithTimeout'
 import type { WordType } from '../types'
 
 export const DEFAULT_MODEL = 'gemini-flash-lite-latest'
+
+const GEMINI_TIMEOUT_MS = 30000
+const GEMINI_TIMEOUT_MESSAGE = `Geminiからの応答がありませんでした(${GEMINI_TIMEOUT_MS / 1000}秒でタイムアウト)。ネットワーク状況を確認して再試行してください。`
 
 export interface GeminiWordInfo {
   type: WordType
@@ -126,19 +130,24 @@ Output: JSON per schema. Exactly one result per term, same order, same count. Ec
     model,
   )}:generateContent?key=${encodeURIComponent(apiKey)}`
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: BATCH_RESPONSE_SCHEMA,
-        temperature: 0.4,
-        maxOutputTokens: 8192,
-      },
-    }),
-  })
+  const res = await fetchWithTimeout(
+    url,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: BATCH_RESPONSE_SCHEMA,
+          temperature: 0.4,
+          maxOutputTokens: 8192,
+        },
+      }),
+    },
+    GEMINI_TIMEOUT_MS,
+    GEMINI_TIMEOUT_MESSAGE,
+  )
 
   if (!res.ok) {
     const body = await res.text().catch(() => '')
@@ -205,18 +214,23 @@ Output: JSON per schema. meaningJa language: Japanese.`
     model,
   )}:generateContent?key=${encodeURIComponent(apiKey)}`
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: RELATED_RESPONSE_SCHEMA,
-        temperature: 0.4,
-      },
-    }),
-  })
+  const res = await fetchWithTimeout(
+    url,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: RELATED_RESPONSE_SCHEMA,
+          temperature: 0.4,
+        },
+      }),
+    },
+    GEMINI_TIMEOUT_MS,
+    GEMINI_TIMEOUT_MESSAGE,
+  )
 
   if (!res.ok) {
     const body = await res.text().catch(() => '')

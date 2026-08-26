@@ -1,5 +1,9 @@
 import { DEFAULT_MODEL, GeminiError } from './gemini'
+import { fetchWithTimeout } from '../utils/fetchWithTimeout'
 import type { PassageAnalysisResult } from '../types'
+
+const PASSAGE_TIMEOUT_MS = 60000
+const PASSAGE_TIMEOUT_MESSAGE = `Geminiからの応答がありませんでした(${PASSAGE_TIMEOUT_MS / 1000}秒でタイムアウト)。文章が長すぎる場合は分割するか、しばらくして再試行してください。`
 
 const RESPONSE_SCHEMA = {
   type: 'object',
@@ -71,19 +75,24 @@ Output: JSON per schema. Text language: Japanese.`
     useModel,
   )}:generateContent?key=${encodeURIComponent(apiKey)}`
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: RESPONSE_SCHEMA,
-        temperature: 0.4,
-        maxOutputTokens: 8192,
-      },
-    }),
-  })
+  const res = await fetchWithTimeout(
+    url,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: RESPONSE_SCHEMA,
+          temperature: 0.4,
+          maxOutputTokens: 8192,
+        },
+      }),
+    },
+    PASSAGE_TIMEOUT_MS,
+    PASSAGE_TIMEOUT_MESSAGE,
+  )
 
   if (!res.ok) {
     const body = await res.text().catch(() => '')
