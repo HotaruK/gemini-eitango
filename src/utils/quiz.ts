@@ -15,6 +15,12 @@ export function computeRate(quizCount: number, correctCount: number): number | u
   return quizCount > 0 ? correctCount / quizCount : undefined
 }
 
+export function formatRate(quizCount: number, correctCount: number): string {
+  const rate = computeRate(quizCount, correctCount)
+  if (rate === undefined) return '未出題'
+  return `${Math.round(rate * 100)}% (${correctCount}/${quizCount})`
+}
+
 export function isWordMastered(word: Pick<Word, 'intervalIndex'>): boolean {
   return word.intervalIndex >= MASTERY_INTERVAL_INDEX
 }

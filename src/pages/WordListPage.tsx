@@ -1,27 +1,15 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import db from '../db'
-import { computeRate, isWordDue, isWordMastered } from '../utils/quiz'
+import { formatRate, isWordDue, isWordMastered } from '../utils/quiz'
+import { TYPE_LABEL } from '../utils/wordTypeLabels'
 import RelatedTermsModal from '../components/RelatedTermsModal'
 import BackupReminderBanner from '../components/BackupReminderBanner'
+import TypeBadge from '../components/TypeBadge'
 import type { Word, WordType } from '../types'
-
-const TYPE_LABEL: Record<WordType, string> = {
-  word: '単語',
-  idiom: 'イディオム',
-  slang: 'スラング',
-  meme: 'ミーム',
-  phrase: '成句',
-}
 
 type FlagFilter = 'all' | 'flagged' | 'unflagged'
 type MasteryFilter = 'all' | 'mastered' | 'unmastered'
-
-function formatRate(quizCount: number, correctCount: number): string {
-  const rate = computeRate(quizCount, correctCount)
-  if (rate === undefined) return '未出題'
-  return `${Math.round(rate * 100)}% (${correctCount}/${quizCount})`
-}
 
 function formatNextReview(nextReviewAt: number): string {
   if (isWordDue({ nextReviewAt })) return '復習: 今すぐ'
@@ -135,7 +123,7 @@ export default function WordListPage() {
           <li key={w.id} className="word-item">
             <div className="word-item-head">
               <strong>{w.term}</strong>
-              <span className="type-badge small">{TYPE_LABEL[w.type]}</span>
+              <TypeBadge type={w.type} small />
               {isWordMastered(w) && <span className="mastered-badge">習得済み</span>}
               <button
                 className={`flag-btn small ${w.isFlagged ? 'flagged' : ''}`}

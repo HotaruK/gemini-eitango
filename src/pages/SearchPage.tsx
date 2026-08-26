@@ -1,18 +1,12 @@
 import { useState } from 'react'
 import db from '../db'
 import { lookupWords } from '../api/lookup'
-import { getGeminiApiKey, getGeminiModel } from '../utils/settings'
+import { getGeminiApiKey, getGeminiModel, MISSING_GEMINI_API_KEY_MESSAGE } from '../utils/settings'
 import { saveLookupResult } from '../utils/saveWord'
+import { getErrorMessage } from '../utils/errors'
 import BackToTopButton from '../components/BackToTopButton'
-import type { Word, WordType } from '../types'
-
-const TYPE_LABEL: Record<WordType, string> = {
-  word: '単語',
-  idiom: 'イディオム',
-  slang: 'スラング',
-  meme: 'ミーム',
-  phrase: '成句',
-}
+import TypeBadge from '../components/TypeBadge'
+import type { Word } from '../types'
 
 const MAX_TERMS = 10
 
@@ -53,7 +47,7 @@ export default function SearchPage({ onDone }: SearchPageProps) {
 
     const apiKey = getGeminiApiKey()
     if (!apiKey) {
-      setError('Gemini APIキーが未設定です。設定タブで入力してください。')
+      setError(MISSING_GEMINI_API_KEY_MESSAGE)
       return
     }
 
@@ -67,7 +61,7 @@ export default function SearchPage({ onDone }: SearchPageProps) {
       const saved = await Promise.all(looked.map((l) => saveLookupResult(l)))
       setItems(terms.map((term, i) => ({ term, status: 'done', result: saved[i] })))
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
+      const message = getErrorMessage(err)
       setItems(terms.map((term) => ({ term, status: 'error', error: message })))
     }
 
@@ -121,7 +115,7 @@ export default function SearchPage({ onDone }: SearchPageProps) {
           <div key={idx} className="result-card">
             <div className="result-header">
               <h2>{item.term}</h2>
-              {item.result && <span className="type-badge">{TYPE_LABEL[item.result.type]}</span>}
+              {item.result && <TypeBadge type={item.result.type} />}
             </div>
 
             {item.status === 'loading' && <p className="loading-text">検索中…</p>}

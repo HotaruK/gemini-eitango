@@ -1,3 +1,5 @@
+export const MISSING_GEMINI_API_KEY_MESSAGE = 'Gemini APIキーが未設定です。設定タブで入力してください。'
+
 const GEMINI_KEY_STORAGE = 'eitango.geminiApiKey'
 const GEMINI_MODEL_STORAGE = 'eitango.geminiModel'
 const AUTO_UNFLAG_STORAGE = 'eitango.autoUnflag'

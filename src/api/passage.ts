@@ -1,5 +1,4 @@
-import { DEFAULT_MODEL, GeminiError } from './gemini'
-import { fetchWithTimeout } from '../utils/fetchWithTimeout'
+import { assertGeminiApiKey, GeminiError, generateGeminiJson } from './gemini'
 import type { PassageAnalysisResult } from '../types'
 
 const PASSAGE_TIMEOUT_MS = 60000
@@ -47,15 +46,11 @@ export async function analyzePassage(
   apiKey: string,
   model?: string,
 ): Promise<PassageAnalysisResult> {
-  if (!apiKey) {
-    throw new GeminiError('Gemini APIキーが設定されていません。設定画面で入力してください。')
-  }
+  assertGeminiApiKey(apiKey)
   const trimmed = text.trim()
   if (!trimmed) {
     throw new GeminiError('文章が入力されていません。')
   }
-
-  const useModel = model?.trim() || DEFAULT_MODEL
 
   const prompt = `You reading-helper bot for English learner. Text below, maybe British, maybe joke or wordplay inside. Whole meaning matter most, not just single word.
 
@@ -71,64 +66,29 @@ Do this:
 
 Output: JSON per schema. Text language: Japanese.`
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-    useModel,
-  )}:generateContent?key=${encodeURIComponent(apiKey)}`
+  const parsed = await generateGeminiJson({
+    apiKey,
+    model,
+    prompt,
+    responseSchema: RESPONSE_SCHEMA,
+    temperature: 0.4,
+    maxOutputTokens: 8192,
+    timeoutMs: PASSAGE_TIMEOUT_MS,
+    timeoutMessage: PASSAGE_TIMEOUT_MESSAGE,
+    emptyResponseMessage: 'Geminiから有効な応答が得られませんでした。文章が長すぎる場合は分割してお試しください。',
+  })
 
-  const res = await fetchWithTimeout(
-    url,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          responseSchema: RESPONSE_SCHEMA,
-          temperature: 0.4,
-          maxOutputTokens: 8192,
-        },
-      }),
-    },
-    PASSAGE_TIMEOUT_MS,
-    PASSAGE_TIMEOUT_MESSAGE,
-  )
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => '')
-    if (res.status === 400 || res.status === 404) {
-      throw new GeminiError(
-        `Geminiリクエストが失敗しました(${res.status})。APIキーまたはモデル名(${useModel})を設定画面で確認してください。`,
-      )
-    }
-    if (res.status === 429) {
-      throw new GeminiError('Geminiの無料枠のレート制限に達しました。しばらく待って再試行してください。')
-    }
-    throw new GeminiError(`Gemini APIエラー(${res.status}): ${body.slice(0, 200)}`)
-  }
-
-  const data = await res.json()
-  const textOut = data?.candidates?.[0]?.content?.parts?.[0]?.text
-  if (!textOut) {
-    throw new GeminiError('Geminiから有効な応答が得られませんでした。文章が長すぎる場合は分割してお試しください。')
-  }
-
-  try {
-    const parsed = JSON.parse(textOut)
-    return {
-      translationJa: parsed.translationJa ?? '',
-      explanation: parsed.explanation ?? '',
-      wordplay: parsed.wordplay ?? '',
-      terms: Array.isArray(parsed.terms)
-        ? parsed.terms.map((t: any) => ({
-            term: t.term ?? '',
-            type: t.type ?? 'word',
-            meaningJa: t.meaningJa ?? '',
-            note: t.note ?? '',
-          }))
-        : [],
-    }
-  } catch {
-    throw new GeminiError('Geminiの応答の解析に失敗しました。')
+  return {
+    translationJa: parsed.translationJa ?? '',
+    explanation: parsed.explanation ?? '',
+    wordplay: parsed.wordplay ?? '',
+    terms: Array.isArray(parsed.terms)
+      ? parsed.terms.map((t: any) => ({
+          term: t.term ?? '',
+          type: t.type ?? 'word',
+          meaningJa: t.meaningJa ?? '',
+          note: t.note ?? '',
+        }))
+      : [],
   }
 }

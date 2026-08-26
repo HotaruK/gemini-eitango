@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import db from '../db'
-import { downloadCsv, wordsToCsv } from '../utils/csv'
-import { getLastBackupAt, onLastBackupAtChange, setLastBackupAt } from '../utils/settings'
+import { exportWordsBackup } from '../utils/backup'
+import { getLastBackupAt, onLastBackupAtChange } from '../utils/settings'
 
 const REMINDER_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -16,11 +16,7 @@ export default function BackupReminderBanner() {
   if (!needsBackup) return null
 
   async function handleBackup() {
-    const words = await db.words.toArray()
-    const csv = wordsToCsv(words)
-    const date = new Date().toISOString().slice(0, 10)
-    downloadCsv(csv, `eitango-memo-${date}.csv`)
-    setLastBackupAt(Date.now())
+    await exportWordsBackup()
   }
 
   return (

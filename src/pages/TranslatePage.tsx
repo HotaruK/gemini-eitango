@@ -1,18 +1,12 @@
 import { useState } from 'react'
 import { analyzePassage } from '../api/passage'
 import { lookupWords } from '../api/lookup'
-import { getGeminiApiKey, getGeminiModel } from '../utils/settings'
+import { getGeminiApiKey, getGeminiModel, MISSING_GEMINI_API_KEY_MESSAGE } from '../utils/settings'
 import { saveLookupResult } from '../utils/saveWord'
+import { getErrorMessage } from '../utils/errors'
 import BackToTopButton from '../components/BackToTopButton'
-import type { ExtractedTerm, PassageAnalysisResult, WordType } from '../types'
-
-const TYPE_LABEL: Record<WordType, string> = {
-  word: '単語',
-  idiom: 'イディオム',
-  slang: 'スラング',
-  meme: 'ミーム',
-  phrase: '成句',
-}
+import TypeBadge from '../components/TypeBadge'
+import type { ExtractedTerm, PassageAnalysisResult } from '../types'
 
 type RegisterStatus = 'idle' | 'running' | 'done'
 
@@ -38,7 +32,7 @@ export default function TranslatePage({ onDone }: TranslatePageProps) {
 
     const apiKey = getGeminiApiKey()
     if (!apiKey) {
-      setError('Gemini APIキーが未設定です。設定タブで入力してください。')
+      setError(MISSING_GEMINI_API_KEY_MESSAGE)
       return
     }
 
@@ -53,7 +47,7 @@ export default function TranslatePage({ onDone }: TranslatePageProps) {
       const analysis = await analyzePassage(trimmed, apiKey, getGeminiModel())
       setResult(analysis)
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(getErrorMessage(err))
     } finally {
       setLoading(false)
       onDone?.()
@@ -82,7 +76,7 @@ export default function TranslatePage({ onDone }: TranslatePageProps) {
     if (!result || checked.size === 0) return
     const apiKey = getGeminiApiKey()
     if (!apiKey) {
-      setError('Gemini APIキーが未設定です。設定タブで入力してください。')
+      setError(MISSING_GEMINI_API_KEY_MESSAGE)
       return
     }
 
@@ -116,7 +110,7 @@ export default function TranslatePage({ onDone }: TranslatePageProps) {
     } catch (err) {
       failed.push(...targets.map((t) => t.term))
       setRegisterProgress({ done: targets.length, total: targets.length })
-      setError(err instanceof Error ? err.message : String(err))
+      setError(getErrorMessage(err))
     }
 
     setRegisterSummary({ added, failed })
@@ -202,7 +196,7 @@ export default function TranslatePage({ onDone }: TranslatePageProps) {
                     <div className="term-checklist-body">
                       <div className="term-checklist-head">
                         <strong>{t.term}</strong>
-                        <span className="type-badge small">{TYPE_LABEL[t.type]}</span>
+                        <TypeBadge type={t.type} small />
                       </div>
                       <p className="meaning">{t.meaningJa}</p>
                       {t.note && <p className="term-note">{t.note}</p>}

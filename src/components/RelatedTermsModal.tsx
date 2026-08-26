@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { fetchRelatedTerms, type RelatedTermsResult } from '../api/gemini'
 import { lookupWords } from '../api/lookup'
-import { getGeminiApiKey, getGeminiModel } from '../utils/settings'
+import { getGeminiApiKey, getGeminiModel, MISSING_GEMINI_API_KEY_MESSAGE } from '../utils/settings'
 import { saveLookupResult } from '../utils/saveWord'
+import { getErrorMessage } from '../utils/errors'
 import type { Word } from '../types'
 
 interface RelatedTermsModalProps {
@@ -24,7 +25,7 @@ export default function RelatedTermsModal({ word, onClose }: RelatedTermsModalPr
     const apiKey = getGeminiApiKey()
     if (!apiKey) {
       setLoading(false)
-      setError('Gemini APIキーが未設定です。設定タブで入力してください。')
+      setError(MISSING_GEMINI_API_KEY_MESSAGE)
       return
     }
 
@@ -35,7 +36,7 @@ export default function RelatedTermsModal({ word, onClose }: RelatedTermsModalPr
         if (!cancelled) setResult(res)
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err))
+        if (!cancelled) setError(getErrorMessage(err))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -50,7 +51,7 @@ export default function RelatedTermsModal({ word, onClose }: RelatedTermsModalPr
     const apiKey = getGeminiApiKey()
     if (!apiKey) {
       setRegisterStatus((prev) => ({ ...prev, [term]: 'error' }))
-      setRegisterError((prev) => ({ ...prev, [term]: 'Gemini APIキーが未設定です。設定タブで入力してください。' }))
+      setRegisterError((prev) => ({ ...prev, [term]: MISSING_GEMINI_API_KEY_MESSAGE }))
       return
     }
 
@@ -67,7 +68,7 @@ export default function RelatedTermsModal({ word, onClose }: RelatedTermsModalPr
       setRegisterStatus((prev) => ({ ...prev, [term]: 'done' }))
     } catch (err) {
       setRegisterStatus((prev) => ({ ...prev, [term]: 'error' }))
-      setRegisterError((prev) => ({ ...prev, [term]: err instanceof Error ? err.message : String(err) }))
+      setRegisterError((prev) => ({ ...prev, [term]: getErrorMessage(err) }))
     }
   }
 

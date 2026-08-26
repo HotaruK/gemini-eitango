@@ -1,5 +1,5 @@
 import db from '../db'
-import { ACTIVE_POOL_SIZE, buildActivePool, isWordMastered, MASTERY_MIN_RATE } from '../utils/quiz'
+import { ACTIVE_POOL_SIZE, buildActivePool, formatRate, isWordMastered, MASTERY_MIN_RATE } from '../utils/quiz'
 import type { Word } from '../types'
 
 const MIN_ATTEMPTS = 3
@@ -104,11 +104,7 @@ export default function QuizAnalysis({ words }: { words: Word[] }) {
                     <div className="analysis-item-row">
                       <strong>{w.term}</strong>
                       <div className="analysis-item-meta">
-                        <span className="rate-badge neutral">
-                          {stats.rate === undefined
-                            ? '未出題'
-                            : `${Math.round(stats.rate * 100)}% (${stats.correctCount}/${stats.quizCount})`}
-                        </span>
+                        <span className="rate-badge neutral">{formatRate(stats.quizCount, stats.correctCount)}</span>
                       </div>
                     </div>
                     <p className="meaning">{w.meaningJa}</p>
@@ -135,9 +131,7 @@ export default function QuizAnalysis({ words }: { words: Word[] }) {
                   <div className="analysis-item-row">
                     <strong>{w.term}</strong>
                     <div className="analysis-item-meta">
-                      <span className="rate-badge weak">
-                        {Math.round((stats.rate ?? 0) * 100)}% ({stats.correctCount}/{stats.quizCount})
-                      </span>
+                      <span className="rate-badge weak">{formatRate(stats.quizCount, stats.correctCount)}</span>
                       {!w.isFlagged && (
                         <button className="flag-add-btn" onClick={() => addFlag(w.id!)}>
                           ★ 出題対象に追加
