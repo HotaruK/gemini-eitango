@@ -518,6 +518,37 @@ button:disabled {
   min-height: 160px;
 }
 
+.translate-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.translate-actions button {
+  flex: 1;
+}
+
+.ocr-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ocr-label.disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.ocr-label input {
+  display: none;
+}
+
 .analysis-result {
   display: flex;
   flex-direction: column;

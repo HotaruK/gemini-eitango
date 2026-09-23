@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { analyzePassage } from '../api/passage'
+import { extractTextFromImage } from '../api/ocr'
 import { lookupWords } from '../api/lookup'
 import { getGeminiApiKey, getGeminiModel, MISSING_GEMINI_API_KEY_MESSAGE } from '../utils/settings'
 import { saveLookupResult } from '../utils/saveWord'
 import { getErrorMessage } from '../utils/errors'
+import { prepareImageForGemini } from '../utils/image'
 import BackToTopButton from '../components/BackToTopButton'
 import TypeBadge from '../components/TypeBadge'
 import type { ExtractedTerm, PassageAnalysisResult } from '../types'
@@ -17,6 +19,7 @@ interface TranslatePageProps {
 export default function TranslatePage({ onDone }: TranslatePageProps) {
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(false)
+  const [ocrLoading, setOcrLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<PassageAnalysisResult | null>(null)
   const [checked, setChecked] = useState<Set<number>>(new Set())
@@ -52,6 +55,44 @@ export default function TranslatePage({ onDone }: TranslatePageProps) {
       setLoading(false)
       onDone?.()
     }
+  }
+
+  async function handleImage(file: Blob) {
+    const apiKey = getGeminiApiKey()
+    if (!apiKey) {
+      setError(MISSING_GEMINI_API_KEY_MESSAGE)
+      return
+    }
+
+    setOcrLoading(true)
+    setError(null)
+    try {
+      const image = await prepareImageForGemini(file)
+      const extracted = await extractTextFromImage(image, apiKey, getGeminiModel())
+      // 複数枚のスクショを続けて読み込めるよう、入力済みの文章は消さずに末尾へ追記する
+      setText((prev) => (prev.trim() ? `${prev.trimEnd()}
+
+${extracted}` : extracted))
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setOcrLoading(false)
+    }
+  }
+
+  function handleImageInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    // 同じ画像を選び直してもonChangeが発火するようにリセットしておく
+    e.target.value = ''
+    if (file) handleImage(file)
+  }
+
+  function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const imageItem = Array.from(e.clipboardData.items).find((item) => item.type.startsWith('image/'))
+    const file = imageItem?.getAsFile()
+    if (!file) return
+    e.preventDefault()
+    if (!ocrLoading) handleImage(file)
   }
 
   function toggleChecked(idx: number) {
@@ -127,7 +168,8 @@ export default function TranslatePage({ onDone }: TranslatePageProps) {
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="意味が取りづらい文章・段落・ページを貼り付けてください"
+            onPaste={handlePaste}
+            placeholder="意味が取りづらい文章・段落・ページを貼り付けてください(画像の貼り付けも可)"
             rows={8}
           />
           {text && (
@@ -141,9 +183,15 @@ export default function TranslatePage({ onDone }: TranslatePageProps) {
             </button>
           )}
         </div>
-        <button type="submit" disabled={loading}>
-          {loading ? '解析中…(長文は時間がかかります)' : '解析する'}
-        </button>
+        <div className="translate-actions">
+          <label className={`ocr-label${ocrLoading ? ' disabled' : ''}`}>
+            {ocrLoading ? '読み取り中…' : '📷 画像から読み取る'}
+            <input type="file" accept="image/*" onChange={handleImageInput} disabled={ocrLoading} />
+          </label>
+          <button type="submit" disabled={loading || ocrLoading}>
+            {loading ? '解析中…(長文は時間がかかります)' : '解析する'}
+          </button>
+        </div>
       </form>
 
       {error && <p className="error-text">{error}</p>}

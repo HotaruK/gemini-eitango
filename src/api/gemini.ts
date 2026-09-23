@@ -101,10 +101,17 @@ export function assertGeminiApiKey(apiKey: string): void {
 
 const DEFAULT_EMPTY_RESPONSE_MESSAGE = 'Geminiから有効な応答が得られませんでした。'
 
+export interface GeminiInlineImage {
+  mimeType: string
+  /** data URLの接頭辞を除いたbase64文字列 */
+  data: string
+}
+
 interface GenerateGeminiJsonOptions {
   apiKey: string
   model?: string
   prompt: string
+  images?: GeminiInlineImage[]
   responseSchema: object
   temperature: number
   maxOutputTokens?: number
@@ -116,7 +123,7 @@ interface GenerateGeminiJsonOptions {
 /**
  * Gemini generateContent APIを叩き、JSONスキーマ応答をパースして返す共通処理。
  * リクエスト組み立て・タイムアウト・HTTPエラー種別ごとのメッセージ・応答パースは
- * 呼び出し元(fetchWordInfoBatch / fetchRelatedTerms / analyzePassage)で共通のため、ここに集約する。
+ * 呼び出し元(fetchWordInfoBatch / fetchRelatedTerms / analyzePassage / extractTextFromImage)で共通のため、ここに集約する。
  */
 export async function generateGeminiJson(opts: GenerateGeminiJsonOptions): Promise<any> {
   const model = opts.model?.trim() || DEFAULT_MODEL
@@ -130,7 +137,14 @@ export async function generateGeminiJson(opts: GenerateGeminiJsonOptions): Promi
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: opts.prompt }] }],
+        contents: [
+          {
+            parts: [
+              ...(opts.images ?? []).map((img) => ({ inlineData: { mimeType: img.mimeType, data: img.data } })),
+              { text: opts.prompt },
+            ],
+          },
+        ],
         generationConfig: {
           responseMimeType: 'application/json',
           responseSchema: opts.responseSchema,
